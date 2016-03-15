@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,10 +18,15 @@ ssize_t report_error() {
 
 ssize_t Read(int fd, void *buf, size_t nbyte) {
 	ssize_t n;
-	if ((n = read(fd, buf, nbyte)) >= 0) {
-		return n;
-	} else {
-		return report_error();
+	while (1) {
+		if ((n = read(fd, buf, nbyte)) >= 0) {
+			return n;
+		} else {
+			if (errno == EINTR) {
+				continue;
+			}
+			return report_error();
+		}
 	}
 }
 
@@ -29,6 +35,9 @@ ssize_t Write(int fd, void *buf, size_t nbyte) {
 	while (written < nbyte) {
 		ssize_t n = write(fd, buf + written, nbyte - written);
 		if (n < 0) {
+			if (errno == EINTR) {
+				continue;
+			}
 			return report_error();
 		}
 		written += n;
@@ -36,10 +45,18 @@ ssize_t Write(int fd, void *buf, size_t nbyte) {
 	return written;
 }
 
-int main() {
+int main(int argc, char* argv[]) {
 	char buf[BUF_SIZE];
 	ssize_t n;
-	while ((n = Read(STDIN, buf, BUF_SIZE)) > 0) {
+	int fd = STDIN;
+	if (argc > 1) {
+		fd = open(argv[1], O_RDONLY);
+		if (fd < 0) {
+			report_error();
+		}
+	}
+	
+	while ((n = Read(fd, buf, BUF_SIZE)) > 0) {
 		Write(STDOUT, buf, n);
 	}
 	return 0;
