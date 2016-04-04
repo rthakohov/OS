@@ -24,6 +24,7 @@ void handler(int signal, siginfo_t *info, void *tmp) {
 int main() {
 	struct sigaction sa;
 	sa.sa_sigaction = handler;
+	sa.sa_flags = SA_SIGINFO;
 	sigaction(SIGUSR1, &sa, NULL);
 	
 	if (sigemptyset(&sa.sa_mask) != 0 || sigaddset(&sa.sa_mask, SIGUSR1) != 0 || sigaddset(&sa.sa_mask, SIGUSR2) != 0) {
